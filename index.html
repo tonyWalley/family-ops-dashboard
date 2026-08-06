@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12355b">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Family Ops Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+  <div class="header">
+    <h1>Family Ops Dashboard</h1>
+    <p>Private-on-device cash planning, shared tasks, budgets, and structured update export</p>
+    <div class="toolbar">
+      <button class="btn good" id="saveBtn">Save on this device</button>
+      <button class="btn primary" id="shareBtn">Share current JSON</button>
+      <button class="btn" id="exportBtn">Download JSON</button>
+      <label class="btn" for="importFile">Import latest JSON</label><input class="hidden" type="file" id="importFile" accept="application/json,.json">
+      <button class="btn" id="snapshotBtn">Download updated HTML</button>
+      <button class="btn warn" id="copyBtn">Copy family summary</button>
+    </div>
+    <div class="statusline"><span class="pill" id="saveStatus">Loaded</span><span class="pill" id="revisionStatus">Revision 1</span><span class="pill" id="updatedStatus">Updated</span><span class="pill" id="modeStatus">Base forecast</span></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="calendar">Calendar</button>
+    <button class="tab" data-tab="cashplan">Cash Plan</button>
+    <button class="tab" data-tab="budgets">Budgets</button>
+    <button class="tab" data-tab="tasks">Owners</button>
+    <button class="tab" data-tab="updates">Updates</button>
+    <button class="tab" data-tab="sync">Save & Share</button>
+  </div>
+</div>
+
+<section class="section active" id="overview">
+  <div class="grid4" id="kpis"></div>
+  <div id="warningBox"></div>
+  <div class="panel">
+    <h2>Quick Settings</h2>
+    <div class="formgrid">
+      <div class="field"><label>Opening available balance</label><input type="number" step="0.01" id="openingBalance"></div>
+      <div class="field"><label>Cash floor</label><input type="number" step="0.01" id="cashFloor"></div>
+      <div class="field"><label>Forecast mode</label><select id="forecastMode"><option value="base">Base</option><option value="downside">Downside</option><option value="recovery">Recovery</option></select></div>
+      <div class="field"><label>Updating person / device</label><input id="updatedBy" placeholder="Name or device label"></div>
+    </div>
+  </div>
+  <div class="panel"><h2>Next 7 Days</h2><div id="next7"></div></div>
+  <div class="panel"><h2>Highest-Priority Open Items</h2><div id="openItems"></div></div>
+</section>
+
+<section class="section" id="calendar">
+  <div class="panel calendarpanel"><h2>Monthly Calendar</h2><p class="small">Tap an event to jump to it in the Cash Plan. Projected balance uses the selected forecast mode and the forecast date when a weekend reserve is needed.</p><div class="calendar" id="calendarGrid"></div></div>
+</section>
+
+<section class="section" id="cashplan">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h2>Cash Plan</h2><p class="small">Edit amounts, dates, statuses, and actuals. Forecast inclusion is controlled separately for Base, Downside, and Recovery.</p></div><div class="actions"><button class="btn primary" id="addTxBtn">Add item</button><button class="btn" id="sortTxBtn">Sort by date</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Item</th><th>Owner</th><th>Kind</th><th>Status</th><th class="num">Planned</th><th class="num">Actual</th><th>Base</th><th>Down</th><th>Recov.</th><th>Notes</th><th></th></tr></thead><tbody id="txBody"></tbody></table></div>
+  </div>
+  <div class="panel"><h2>Running Cash</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>Item</th><th>Status</th><th class="num">Change</th><th class="num">Projected cash</th></tr></thead><tbody id="runningBody"></tbody></table></div></div>
+</section>
+
+<section class="section" id="budgets">
+  <div class="panel"><h2>Household Spending Budgets</h2><p class="small">Budget totals are editable. Spent amounts are for tracking actual household spending and do not independently change cash unless a matching cash-plan item exists.</p><div id="budgetRows"></div></div>
+  <div class="callout good"><strong>Restaurant rule:</strong> The goal is controlled use, not elimination. A planned meal out or convenience meal that protects the family schedule is allowed inside the cap. Once the cap is used, default to groceries, leftovers, sandwiches, frozen meals, or another quick option.</div>
+  <div class="panel"><h2>Subscriptions and Entertainment</h2><p class="small">Track retained, reduced, or canceled subscriptions as cash-plan items or owner tasks in the private imported JSON. The public application shell intentionally contains no household subscription details.</p></div>
+</section>
+
+<section class="section" id="tasks">
+  <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h2>Owner Task Lists</h2><p class="small" id="taskProgressText"></p></div><button class="btn primary" id="addTaskBtn">Add task</button></div><div class="progress"><span id="taskProgress"></span></div></div>
+  <div class="ownergrid"><div class="ownerbox"><h2 id="owner1Title">Owner 1</h2><div id="owner1Tasks"></div></div><div class="ownerbox"><h2 id="owner2Title">Owner 2</h2><div id="owner2Tasks"></div></div></div>
+  <div class="panel"><h2>Living-Funds Transfer Protocol</h2><div class="callout"><strong>When protected living funds are moved between accounts:</strong> verify the destination balance, decide the exact protected amount, and leave enough in the source account for authorized autopays. Record the movement as a transfer, not spending. Add the date, amount, reason, and protected envelope.</div></div>
+</section>
+
+<section class="section" id="updates">
+  <div class="panel"><h2>Add a Quick Update</h2><div class="formgrid"><div class="field"><label>Author</label><input id="noteAuthor" placeholder="Name"></div><div class="field" style="grid-column:span 3"><label>Update</label><input id="noteText" placeholder="Example: Utility confirmed the amount and due date."></div></div><div class="actions" style="margin-top:8px"><button class="btn good" id="addNoteBtn">Add update</button></div></div>
+  <div class="panel"><h2>Update Log</h2><div id="notesList"></div></div>
+  <div class="panel"><h2>Unmodeled or Unconfirmed Items</h2><div class="tablewrap"><table><thead><tr><th>Item</th><th>Amount</th><th>Owner</th><th>Action</th></tr></thead><tbody id="unknownBody"></tbody></table></div></div>
+</section>
+
+<section class="section" id="sync">
+  <div class="panel"><h2>Best Low-Effort Shared Workflow</h2><div class="callout good"><strong>This version is designed for a future direct Dropbox connector.</strong> For now it saves instantly on each device and exchanges one structured JSON file. All calculations, tasks, notes, and statuses are stored in that file.</div><div class="syncsteps"><div class="syncstep"><div><strong>Before editing:</strong> import the newest <code>WFOS_CURRENT_STATE.json</code> from the shared Dropbox folder.</div></div><div class="syncstep"><div><strong>Edit normally:</strong> changes autosave locally on the current phone.</div></div><div class="syncstep"><div><strong>After editing:</strong> tap <em>Share current JSON</em> and save or replace <code>WFOS_CURRENT_STATE.json</code> in Dropbox.</div></div><div class="syncstep"><div><strong>Tell the other person:</strong> “I updated the dashboard” so they import before making their next changes.</div></div></div></div>
+  <div class="panel"><h2>Conflict Protection</h2><p>The JSON includes a revision number, last-updated time, and updater name. Import warns when the incoming file is older than the state on the device. This does not create true simultaneous editing, but it sharply reduces accidental overwrites.</p><div class="callout warn"><strong>One-file discipline:</strong> keep the shared filename exactly <code>WFOS_CURRENT_STATE.json</code>. Timestamped update files can be kept as backups, but the fixed filename is the current shared state.</div></div>
+  <div class="panel"><h2>Future Optional Upgrade</h2><p>A direct Dropbox OAuth/PKCE sync adapter can be added later without rebuilding the dashboard. That would let both phones read and write the same JSON file directly. It should be added only after this local/import-export version proves useful.</p></div>
+  <div class="panel"><h2>Device Data</h2><div class="actions"><button class="btn danger" id="resetBtn">Reset this device to embedded state</button></div><p class="small">Reset clears only this browser’s local copy. It does not delete Dropbox files.</p></div>
+</section>
+
+<div class="footer">Family operations dashboard. Use the household operating rules before authorizing material payments. Replace estimates with verified current information.</div>
+</div>
+
+<div class="modal hidden" id="summaryModal"><div class="modalbox"><div class="modalhead"><h2>Formatted Family Summary</h2><button class="close" id="closeSummary">x</button></div><p class="small">Use Copy Rich Text. If the browser blocks formatted copying, select all inside the box and copy manually.</p><div class="actions"><button class="btn good" id="copyRichBtn">Copy rich text</button><button class="btn" id="copyPlainBtn">Copy plain text</button></div><div class="summarybox" id="summaryContent" contenteditable="true"></div></div></div>
+<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.1.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-06T18:00:00Z","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base"},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Opening available balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Import the private WFOS_CURRENT_STATE.json from Dropbox to load household data."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-06T18:00:00Z","author":"System","text":"This public app shell contains no household financial data. Import the private WFOS_CURRENT_STATE.json from Dropbox to begin."}],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
+<script src="app.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
