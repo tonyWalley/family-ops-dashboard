@@ -1,0 +1,18 @@
+{
+  "name": "Family Ops Dashboard",
+  "short_name": "Family Ops",
+  "description": "A data-free household operations dashboard shell. Private data is imported locally from JSON.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f9",
+  "theme_color": "#12355b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
