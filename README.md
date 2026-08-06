@@ -29,3 +29,5 @@ The included GitHub Actions workflow deploys the repository root to GitHub Pages
 - `sw.js` — offline shell cache
 - `icon.svg` — dashboard icon
 - `.github/workflows/pages.yml` — GitHub Pages deployment
+
+Github Pages deployment initalized
