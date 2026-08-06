@@ -1,0 +1,10 @@
+# Never commit private household state or exported snapshots
+WFOS_CURRENT_STATE.json
+WFOS_STATE_*.json
+WFOS_UPDATE_*.json
+WFOS_FAMILY_DASHBOARD_rev*.html
+FAMILY_OPS_DASHBOARD_rev*.html
+
+# Common local files
+.DS_Store
+Thumbs.db
