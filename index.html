@@ -15,23 +15,13 @@
 <body>
 <div class="app">
 <div class="topbar">
-  <div class="header">
+  <div class="header compact-header">
     <div class="brandrow">
       <div>
         <h1>Family Ops</h1>
         <p>Household cash command center</p>
       </div>
-      <label class="btn primary mobile-import" for="importFile">Import JSON</label>
     </div>
-    <div class="toolbar desktop-toolbar">
-      <button class="btn good" id="saveBtn">Save on this device</button>
-      <button class="btn primary" id="shareBtn">Share current JSON</button>
-      <button class="btn" id="exportBtn">Download JSON</button>
-      <label class="btn" for="importFile">Import latest JSON</label>
-      <button class="btn" id="snapshotBtn">Download updated HTML</button>
-      <button class="btn warn" id="copyBtn">Copy family summary</button>
-    </div>
-    <input class="hidden" type="file" id="importFile" accept="application/json,.json">
     <div class="statusline"><span class="pill" id="saveStatus">Loaded</span><span class="pill" id="revisionStatus">Revision 1</span><span class="pill" id="updatedStatus">Updated</span><span class="pill" id="modeStatus">Base forecast</span></div>
   </div>
   <div class="tabs" id="tabs">
@@ -39,7 +29,8 @@
     <button class="tab" data-tab="calendar">Calendar</button>
     <button class="tab" data-tab="cashplan">Cash Plan</button>
     <button class="tab" data-tab="budgets">Budgets</button>
-    <button class="tab" data-tab="tasks">Owners</button>
+    <button class="tab" id="owner1Tab" data-tab="owner1tasks">Tony</button>
+    <button class="tab" id="owner2Tab" data-tab="owner2tasks">Rachel</button>
     <button class="tab" data-tab="updates">Updates</button>
     <button class="tab" data-tab="sync">Save & Share</button>
   </div>
@@ -86,9 +77,20 @@
   <div class="panel"><h2>Subscriptions and Entertainment</h2><p class="small">Track retained, reduced, or canceled subscriptions as cash-plan items or owner tasks in the private imported JSON. The public application shell intentionally contains no household subscription details.</p></div>
 </section>
 
-<section class="section" id="tasks">
-  <div class="panel"><div class="cashplan-heading"><div><h2>Owner Task Lists</h2><p class="small" id="taskProgressText"></p></div><button class="btn primary" id="addTaskBtn">Add task</button></div><div class="progress"><span id="taskProgress"></span></div></div>
-  <div class="ownergrid"><div class="ownerbox"><h2 id="owner1Title">Owner 1</h2><div id="owner1Tasks"></div></div><div class="ownerbox"><h2 id="owner2Title">Owner 2</h2><div id="owner2Tasks"></div></div></div>
+<section class="section" id="owner1tasks">
+  <div class="panel task-panel">
+    <div class="cashplan-heading"><div><h2 id="owner1Title">Tony's To-Do List</h2><p class="small" id="owner1ProgressText"></p></div><button class="btn primary" id="addOwner1TaskBtn">Add task</button></div>
+    <div class="progress"><span id="owner1Progress"></span></div>
+    <div class="task-list" id="owner1Tasks"></div>
+  </div>
+</section>
+
+<section class="section" id="owner2tasks">
+  <div class="panel task-panel">
+    <div class="cashplan-heading"><div><h2 id="owner2Title">Rachel's To-Do List</h2><p class="small" id="owner2ProgressText"></p></div><button class="btn primary" id="addOwner2TaskBtn">Add task</button></div>
+    <div class="progress"><span id="owner2Progress"></span></div>
+    <div class="task-list" id="owner2Tasks"></div>
+  </div>
   <div class="panel"><h2>Living-Funds Transfer Protocol</h2><div class="callout"><strong>When protected living funds are moved between accounts:</strong> verify the destination balance, decide the exact protected amount, and leave enough in the source account for authorized autopays. Record the movement as a transfer, not spending. Add the date, amount, reason, and protected envelope.</div></div>
 </section>
 
@@ -99,9 +101,20 @@
 </section>
 
 <section class="section" id="sync">
-  <div class="panel mobile-sync-actions"><h2>Save & Share</h2><p class="small">The dashboard autosaves edits on this device. Use these controls when you need to move the private state between devices or archive a copy.</p><div class="actions syncbuttons"><button class="btn good" id="saveBtnMobile">Save on this device</button><button class="btn primary" id="shareBtnMobile">Share current JSON</button><button class="btn" id="exportBtnMobile">Download JSON</button><label class="btn" for="importFile">Import latest JSON</label><button class="btn" id="snapshotBtnMobile">Download updated HTML</button><button class="btn warn" id="copyBtnMobile">Copy family summary</button></div></div>
-  <div class="panel"><h2>Shared Workflow</h2><div class="callout good"><strong>Before editing on another phone:</strong> import the newest <code>WFOS_CURRENT_STATE.json</code> from Dropbox. After editing, share or export the updated JSON back to Dropbox.</div><div class="syncsteps"><div class="syncstep"><div><strong>Import first:</strong> avoid editing an old local copy.</div></div><div class="syncstep"><div><strong>Edit normally:</strong> changes autosave on this device.</div></div><div class="syncstep"><div><strong>Export after meaningful changes:</strong> replace the shared current JSON.</div></div></div></div>
-  <div class="panel"><h2>Conflict Protection</h2><p>The JSON includes a revision number, last-updated time, and updater name. Import warns when the incoming file is older than the state on the device. This is not simultaneous editing, but it reduces accidental overwrites.</p></div>
+  <div class="panel command-center">
+    <h2>Save & Share</h2>
+    <p class="small">The dashboard autosaves edits on this device. This is the only command center for moving or archiving the private JSON.</p>
+    <div class="actions syncbuttons"><button class="btn good" id="saveBtn">Save on this device</button><button class="btn primary" id="shareBtn">Share current JSON</button><button class="btn" id="exportBtn">Download JSON</button><label class="btn" for="importFile">Import JSON file</label><button class="btn warn" id="copyBtn">Copy family summary</button></div>
+    <input class="hidden" type="file" id="importFile" accept="application/json,.json">
+  </div>
+  <div class="panel paste-panel">
+    <h2>Paste JSON From a Text Message</h2>
+    <p class="small">Copy the JSON text from Messages, paste it below, then tap Import pasted JSON. Markdown code fences are okay.</p>
+    <textarea id="pasteJson" class="json-paste" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder='Paste the full { ... } JSON here'></textarea>
+    <div class="actions"><button class="btn primary" id="importPasteBtn">Import pasted JSON</button><button class="btn" id="clearPasteBtn">Clear</button></div>
+  </div>
+  <div class="panel"><h2>Shared Workflow</h2><div class="callout good"><strong>Rachel-friendly workflow:</strong> Tony can text the JSON file using Share current JSON. Rachel can either open/import the file directly or copy its text and use Paste JSON above. After Rachel makes changes, she can Share current JSON back to Tony.</div><div class="syncsteps"><div class="syncstep"><div><strong>Import first:</strong> avoid editing an old local copy.</div></div><div class="syncstep"><div><strong>Edit normally:</strong> changes autosave on this device, including task notes.</div></div><div class="syncstep"><div><strong>Share after meaningful changes:</strong> Tony can maintain the Dropbox master copy.</div></div></div></div>
+  <div class="panel"><h2>Conflict Protection</h2><p>The JSON includes a revision number, last-updated time, and updater name. Import warns when the incoming file is the same revision or older than the state on the device. This is not simultaneous editing, but it reduces accidental overwrites.</p></div>
   <div class="panel"><h2>Device Data</h2><div class="actions"><button class="btn danger" id="resetBtn">Reset this device to embedded state</button></div><p class="small">Reset clears only this browser’s local copy. It does not delete Dropbox files.</p></div>
 </section>
 
@@ -109,7 +122,7 @@
 </div>
 
 <div class="modal hidden" id="summaryModal"><div class="modalbox"><div class="modalhead"><h2>Formatted Family Summary</h2><button class="close" id="closeSummary">x</button></div><p class="small">Use Copy Rich Text. If the browser blocks formatted copying, select all inside the box and copy manually.</p><div class="actions"><button class="btn good" id="copyRichBtn">Copy rich text</button><button class="btn" id="copyPlainBtn">Copy plain text</button></div><div class="summarybox" id="summaryContent" contenteditable="true"></div></div></div>
-<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.2.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-06T18:00:00Z","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base"},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; current rolling forecasts use currentAccessibleCash when supplied by the private JSON."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-06T18:00:00Z","author":"System","text":"This public app shell contains no household financial data. Import the private WFOS_CURRENT_STATE.json from Dropbox to begin."}],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
+<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.3.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-06T18:00:00Z","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base"},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; current rolling forecasts use currentAccessibleCash when supplied by the private JSON."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-06T18:00:00Z","author":"System","text":"This public app shell contains no household financial data. Import the private WFOS_CURRENT_STATE.json from Dropbox to begin."}],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
 <script src="app.js" defer></script>
 <script>
 if ('serviceWorker' in navigator) {
