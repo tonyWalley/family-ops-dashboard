@@ -16,12 +16,7 @@
 <div class="app">
 <div class="topbar">
   <div class="header compact-header">
-    <div class="brandrow">
-      <div>
-        <h1>Family Ops</h1>
-        <p>Household cash command center</p>
-      </div>
-    </div>
+    <div class="brandrow"><div><h1>Family Ops</h1><p>Household cash command center</p></div></div>
     <div class="statusline"><span class="pill" id="saveStatus">Loaded</span><span class="pill" id="revisionStatus">Revision 1</span><span class="pill" id="updatedStatus">Updated</span><span class="pill" id="modeStatus">Base forecast</span></div>
   </div>
   <div class="tabs" id="tabs">
@@ -39,10 +34,16 @@
 <section class="section active" id="overview">
   <div class="grid4" id="kpis"></div>
   <div id="warningBox"></div>
+  <div class="panel"><h2>Today / Next</h2><div id="todayNext"></div></div>
   <div class="panel">
-    <h2>Quick Settings</h2>
-    <div class="formgrid">
-      <div class="field"><label>Current accessible cash</label><input type="number" step="0.01" id="currentCash"></div>
+    <div class="panelhead"><div><h2>Cash Balances</h2><p class="small" id="cashUpdatedLabel"></p></div></div>
+    <div class="formgrid cash-grid">
+      <div class="field"><label>USAA available</label><input type="number" step="0.01" id="cashUsaa"></div>
+      <div class="field"><label>Chase / ARRT available</label><input type="number" step="0.01" id="cashChase"></div>
+      <div class="field"><label>Physical cash</label><input type="number" step="0.01" id="cashPhysical"></div>
+      <div class="field"><label>PayPal cash</label><input type="number" step="0.01" id="cashPaypal"></div>
+      <div class="field"><label>Other available cash</label><input type="number" step="0.01" id="cashOther"></div>
+      <div class="field"><label>Current accessible cash</label><input type="number" step="0.01" id="currentCash" readonly></div>
       <div class="field"><label>Cash floor</label><input type="number" step="0.01" id="cashFloor"></div>
       <div class="field"><label>Forecast mode</label><select id="forecastMode"><option value="base">Base</option><option value="downside">Downside</option><option value="recovery">Recovery</option></select></div>
       <div class="field"><label>Updating person / device</label><input id="updatedBy" placeholder="Name or device label"></div>
@@ -56,15 +57,17 @@
   <div class="panel calendarpanel">
     <h2>Cash Calendar</h2>
     <p class="small desktop-calendar-help">Tap an event to jump to it in the Cash Plan. The balance badge shows projected available cash after that day's modeled activity.</p>
-    <p class="small mobile-calendar-help">Upcoming activity is shown as a phone-friendly agenda. Each day with modeled activity shows the projected available cash after that day.</p>
-    <div class="calendar" id="calendarGrid"></div>
-    <div class="calendar-agenda" id="calendarAgenda"></div>
+    <p class="small mobile-calendar-help">Upcoming activity is shown as a phone-friendly agenda. Each day with modeled activity shows projected cash after that day.</p>
+    <div class="calendar" id="calendarGrid"></div><div class="calendar-agenda" id="calendarAgenda"></div>
   </div>
 </section>
 
 <section class="section" id="cashplan">
   <div class="panel">
-    <div class="cashplan-heading"><div><h2>Cash Plan</h2><p class="small">Phone view keeps the essentials visible. Open Details only when you need to change advanced fields.</p></div><div class="actions"><button class="btn primary" id="addTxBtn">Add item</button><button class="btn" id="sortTxBtn">Sort by date</button></div></div>
+    <div class="cashplan-heading">
+      <div><h2>Cash Plan</h2><p class="small">Quick Add keeps household spending, income, and internal transfers distinct. Transfers do not change projected household cash.</p></div>
+      <div class="actions"><button class="btn danger-soft" id="addExpenseBtn">+ Expense</button><button class="btn good" id="addIncomeBtn">+ Income</button><button class="btn" id="addTransferBtn">+ Transfer</button><button class="btn" id="sortTxBtn">Sort</button></div>
+    </div>
     <div class="cashcards" id="cashCards"></div>
     <div class="desktop-cash-table tablewrap"><table><thead><tr><th>Date</th><th>Item</th><th>Owner</th><th>Kind</th><th>Status</th><th class="num">Planned</th><th class="num">Actual</th><th>Base</th><th>Down</th><th>Recov.</th><th>Notes</th><th></th></tr></thead><tbody id="txBody"></tbody></table></div>
   </div>
@@ -72,62 +75,56 @@
 </section>
 
 <section class="section" id="budgets">
-  <div class="panel"><h2>Household Spending Budgets</h2><p class="small">Budget totals are editable. Spent amounts are for tracking actual household spending and do not independently change cash unless a matching cash-plan item exists.</p><div id="budgetRows"></div></div>
-  <div class="callout good"><strong>Restaurant rule:</strong> The goal is controlled use, not elimination. A planned meal out or convenience meal that protects the family schedule is allowed inside the cap. Once the cap is used, default to groceries, leftovers, sandwiches, frozen meals, or another quick option.</div>
-  <div class="panel"><h2>Subscriptions and Entertainment</h2><p class="small">Track retained, reduced, or canceled subscriptions as cash-plan items or owner tasks in the private imported JSON. The public application shell intentionally contains no household subscription details.</p></div>
+  <div class="panel"><h2>Household Spending Budgets</h2><p class="small">Budget totals are editable. Spent amounts are tracking data; they do not independently change cash without a matching cash-plan item.</p><div id="budgetRows"></div></div>
+  <div class="callout good"><strong>Restaurant rule:</strong> controlled use, not elimination. Convenience meals that protect the family schedule are allowed inside the cap.</div>
 </section>
 
 <section class="section" id="owner1tasks">
   <div class="panel task-panel">
     <div class="cashplan-heading"><div><h2 id="owner1Title">Tony's To-Do List</h2><p class="small" id="owner1ProgressText"></p></div><button class="btn primary" id="addOwner1TaskBtn">Add task</button></div>
-    <div class="progress"><span id="owner1Progress"></span></div>
-    <div class="task-list" id="owner1Tasks"></div>
+    <div class="progress"><span id="owner1Progress"></span></div><div class="task-list" id="owner1Tasks"></div>
   </div>
+  <details class="panel archived-panel"><summary>ARCHIVED TASKS <span id="owner1ArchiveCount"></span></summary><div id="owner1ArchivedTasks"></div></details>
 </section>
 
 <section class="section" id="owner2tasks">
   <div class="panel task-panel">
     <div class="cashplan-heading"><div><h2 id="owner2Title">Rachel's To-Do List</h2><p class="small" id="owner2ProgressText"></p></div><button class="btn primary" id="addOwner2TaskBtn">Add task</button></div>
-    <div class="progress"><span id="owner2Progress"></span></div>
-    <div class="task-list" id="owner2Tasks"></div>
+    <div class="progress"><span id="owner2Progress"></span></div><div class="task-list" id="owner2Tasks"></div>
   </div>
-  <div class="panel"><h2>Living-Funds Transfer Protocol</h2><div class="callout"><strong>When protected living funds are moved between accounts:</strong> verify the destination balance, decide the exact protected amount, and leave enough in the source account for authorized autopays. Record the movement as a transfer, not spending. Add the date, amount, reason, and protected envelope.</div></div>
+  <details class="panel archived-panel"><summary>ARCHIVED TASKS <span id="owner2ArchiveCount"></span></summary><div id="owner2ArchivedTasks"></div></details>
+  <div class="panel"><h2>Living-Funds Transfer Protocol</h2><div class="callout"><strong>Internal transfers are not spending:</strong> verify destination balance, protect the intended living amount, and leave enough in the source for authorized drafts.</div></div>
 </section>
 
 <section class="section" id="updates">
-  <div class="panel"><h2>Add a Quick Update</h2><div class="formgrid"><div class="field"><label>Author</label><input id="noteAuthor" placeholder="Name"></div><div class="field update-field"><label>Update</label><input id="noteText" placeholder="Example: Utility confirmed the amount and due date."></div></div><div class="actions update-actions"><button class="btn good" id="addNoteBtn">Add update</button></div></div>
+  <div class="panel"><h2>Add a Quick Update</h2><div class="formgrid"><div class="field"><label>Author</label><input id="noteAuthor" placeholder="Name"></div><div class="field update-field"><label>Update</label><input id="noteText" placeholder="Example: OneMain confirmed hardship terms."></div></div><div class="actions update-actions"><button class="btn good" id="addNoteBtn">Add update</button></div></div>
   <div class="panel"><h2>Update Log</h2><div id="notesList"></div></div>
   <div class="panel"><h2>Unmodeled or Unconfirmed Items</h2><div class="tablewrap"><table><thead><tr><th>Item</th><th>Amount</th><th>Owner</th><th>Action</th></tr></thead><tbody id="unknownBody"></tbody></table></div></div>
 </section>
 
 <section class="section" id="sync">
   <div class="panel command-center">
-    <h2>Save & Share</h2>
-    <p class="small">The dashboard autosaves edits on this device. Use Share as text for the simplest Tony-to-Rachel Messages workflow.</p>
+    <h2>Save & Share</h2><p class="small">The dashboard autosaves edits on this device. Share as text is the simplest Tony-to-Rachel Messages workflow.</p>
     <div class="actions syncbuttons"><button class="btn good" id="saveBtn">Save on this device</button><button class="btn primary" id="shareTextBtn">Share as text</button><button class="btn" id="shareBtn">Share JSON file</button><button class="btn" id="exportBtn">Download JSON</button><label class="btn" for="importFile">Import JSON file</label><button class="btn warn" id="copyBtn">Copy family summary</button></div>
     <input class="hidden" type="file" id="importFile" accept="application/json,.json">
   </div>
-  <div class="panel paste-panel">
-    <h2>Paste JSON From a Text Message</h2>
-    <p class="small">Copy the JSON text from Messages, paste it below, then tap Import pasted JSON. Markdown code fences are okay.</p>
-    <textarea id="pasteJson" class="json-paste" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder='Paste the full { ... } JSON here'></textarea>
-    <div class="actions"><button class="btn primary" id="importPasteBtn">Import pasted JSON</button><button class="btn" id="clearPasteBtn">Clear</button></div>
+  <div class="panel paste-panel"><h2>Paste JSON From a Text Message</h2><p class="small">Copy the JSON text from Messages, paste it below, then tap Import pasted JSON.</p><textarea id="pasteJson" class="json-paste" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder='Paste the full { ... } JSON here'></textarea><div class="actions"><button class="btn primary" id="importPasteBtn">Import pasted JSON</button><button class="btn" id="clearPasteBtn">Clear</button></div></div>
+  <div class="panel csv-panel">
+    <h2>Bank CSV Intake</h2>
+    <div class="callout warn"><strong>Collection only:</strong> attaching a CSV here does not categorize or import its transactions into the cash plan. It stages the original bank export so it can be shared with ChatGPT for full review. JSON contains metadata only; the CSV file itself stays on this device until you share it.</div>
+    <div class="csv-controls"><div class="field"><label>Source</label><select id="bankCsvSource"><option>USAA</option><option>Chase</option><option>PayPal</option></select></div><div class="field"><label>Bank CSV file(s)</label><input type="file" id="bankCsvFile" accept=".csv,text/csv" multiple></div></div>
+    <div class="actions"><button class="btn primary" id="stageBankCsvBtn">Stage selected CSV</button><button class="btn" id="shareAllCsvBtn">Share all staged CSVs</button></div>
+    <p class="small">When shared, filenames are standardized as <code>WFOS_SOURCE_YYYYMMDD_original-name.csv</code>; file contents are unchanged.</p><div id="bankCsvList"></div>
   </div>
-  <div class="panel"><h2>Shared Workflow</h2><div class="callout good"><strong>Rachel-friendly workflow:</strong> Tony taps Share as text and sends it in Messages. Rachel long-presses the message, copies the text, pastes it into the box above, and taps Import pasted JSON. After Rachel makes changes, she can Share as text back to Tony the same way.</div><div class="syncsteps"><div class="syncstep"><div><strong>Import first:</strong> avoid editing an old local copy.</div></div><div class="syncstep"><div><strong>Edit normally:</strong> changes autosave on this device, including task notes.</div></div><div class="syncstep"><div><strong>Share after meaningful changes:</strong> Tony can maintain the Dropbox master copy.</div></div></div></div>
-  <div class="panel"><h2>Conflict Protection</h2><p>The JSON includes a revision number, last-updated time, and updater name. Import warns when the incoming file is the same revision or older than the state on the device. This is not simultaneous editing, but it reduces accidental overwrites.</p></div>
-  <div class="panel"><h2>Device Data</h2><div class="actions"><button class="btn danger" id="resetBtn">Reset this device to embedded state</button></div><p class="small">Reset clears only this browser’s local copy. It does not delete Dropbox files.</p></div>
+  <div class="panel"><h2>Shared Workflow</h2><div class="callout good"><strong>Rachel-friendly JSON workflow:</strong> Share as text → Messages → copy → paste → Import pasted JSON. For bank exports, attach the original CSV here and share it for review rather than trying to categorize it manually.</div></div>
+  <div class="panel"><h2>Device Data</h2><div class="actions"><button class="btn danger" id="resetBtn">Reset this device to embedded state</button></div><p class="small">Reset clears this browser's JSON state. Staged CSV files are device-local and should be removed individually when no longer needed.</p></div>
 </section>
 
-<div class="footer">Family operations dashboard. Use the household operating rules before authorizing material payments. Replace estimates with verified current information.</div>
+<div class="footer">Family operations dashboard. Feature-frozen after the final stabilization release; prioritize financial execution over app development.</div>
 </div>
-
-<div class="modal hidden" id="summaryModal"><div class="modalbox"><div class="modalhead"><h2>Formatted Family Summary</h2><button class="close" id="closeSummary">x</button></div><p class="small">Use Copy Rich Text. If the browser blocks formatted copying, select all inside the box and copy manually.</p><div class="actions"><button class="btn good" id="copyRichBtn">Copy rich text</button><button class="btn" id="copyPlainBtn">Copy plain text</button></div><div class="summarybox" id="summaryContent" contenteditable="true"></div></div></div>
-<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.4.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-06T18:00:00Z","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base"},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; current rolling forecasts use currentAccessibleCash when supplied by the private JSON."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-06T18:00:00Z","author":"System","text":"This public app shell contains no household financial data. Import the private WFOS_CURRENT_STATE.json from Dropbox to begin."}],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
+<div class="modal hidden" id="summaryModal"><div class="modalbox"><div class="modalhead"><h2>Formatted Family Summary</h2><button class="close" id="closeSummary">x</button></div><div class="actions"><button class="btn good" id="copyRichBtn">Copy rich text</button><button class="btn" id="copyPlainBtn">Copy plain text</button></div><div class="summarybox" id="summaryContent" contenteditable="true"></div></div></div>
+<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.5.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-08T23:51:00-05:00","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base","currentCashBreakdown":{"usaaAvailable":0,"chaseArrtAvailable":0,"physicalCash":0,"paypalCash":0,"otherAvailable":0,"total":0,"asOf":"2026-08-08","updatedAt":"2026-08-08T23:51:00-05:00"}},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; rolling forecasts use current accessible cash."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-08T23:51:00-05:00","author":"System","text":"Public app shell contains no household financial data. Import private WFOS_CURRENT_STATE.json to begin."}],"bankCsvIntake":[],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
 <script src="app.js" defer></script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
-}
-</script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
 </body>
 </html>
