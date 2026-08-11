@@ -5,16 +5,21 @@ const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const iso=()=>new Date().toISOString();
 const uid=p=>p+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
+const TERMINAL_REVIEW_STATUSES=new Set(['reviewed','reconciled','ignored','duplicate']);
+const FINGERPRINT_LIMIT=5000;
 
 function stateNow(){
   let x={};
   try{x=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
   x.bankImportBatches=Array.isArray(x.bankImportBatches)?x.bankImportBatches:[];
   x.bankTransactions=Array.isArray(x.bankTransactions)?x.bankTransactions:[];
+  x.bankImportHistory=Array.isArray(x.bankImportHistory)?x.bankImportHistory:[];
+  x.processedBankFingerprints=Array.isArray(x.processedBankFingerprints)?x.processedBankFingerprints:[];
+  x.recurringPayments=Array.isArray(x.recurringPayments)?x.recurringPayments:[];
   x.bankCsvIntake=Array.isArray(x.bankCsvIntake)?x.bankCsvIntake:[];
   return x;
 }
-function updater(){return $('#updatedBy')?.value.trim()||stateNow().lastUpdatedBy||'Unknown'}
+function updater(state){return $('#updatedBy')?.value.trim()||state?.lastUpdatedBy||stateNow().lastUpdatedBy||'Unknown'}
 function normHeader(s){return String(s||'').replace(/^\uFEFF/,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
 function cleanText(v){return String(v??'').replace(/\s+/g,' ').trim()}
 function parseAmount(v){
@@ -86,17 +91,46 @@ function normalizeRecord(source,account,row){
 }
 function hash32(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(16).padStart(8,'0')}
 function fingerprintBase(t){return hash32([t.source,t.account,t.postedDate,t.transactionDate,t.amount.toFixed(2),cleanText(t.description).toLowerCase(),t.sourceType||'',t.sourceTransactionId||''].join('|'))}
-function reviewCounts(state,batchId){const tx=(state.bankTransactions||[]).filter(t=>t.importBatchId===batchId),pending=tx.filter(t=>t.reviewStatus==='needs_review').length,reviewed=tx.filter(t=>t.reviewStatus==='reviewed').length;return{count:tx.length,pending,reviewed}}
+function terminal(t){return TERMINAL_REVIEW_STATUSES.has(String(t?.reviewStatus||'').toLowerCase())}
+function fingerprintValue(v){return typeof v==='string'?v:v&&typeof v==='object'?v.fingerprint:null}
+function processedFingerprintSet(state){return new Set((state.processedBankFingerprints||[]).map(fingerprintValue).filter(Boolean))}
+function reviewCounts(state,batchId){
+  const tx=(state.bankTransactions||[]).filter(t=>t.importBatchId===batchId),pending=tx.filter(t=>!terminal(t)).length,reviewed=tx.length-pending;
+  return{count:tx.length,pending,reviewed};
+}
+function historyEntry(batch,reviewedCount,processedAt){
+  return{id:batch.id,source:batch.source,account:batch.account,fileName:batch.fileName,fileSize:batch.fileSize||null,importedAt:batch.importedAt,importedBy:batch.importedBy,rowCount:Number(batch.rowCount||0),newTransactions:Number(batch.newTransactions||0),duplicatesSkipped:Number(batch.duplicatesSkipped||0),invalidRowsSkipped:Number(batch.invalidRowsSkipped||0),periodStart:batch.periodStart||null,periodEnd:batch.periodEnd||null,reviewedTransactions:reviewedCount,reconciledAt:processedAt,reviewStatus:'reconciled',schema:batch.schema||'wfos-bank-transaction-v1'};
+}
+function compactReviewedBankData(state,{persist=true,increment=true}={}){
+  state=state||stateNow();
+  const processed=(state.bankTransactions||[]).filter(terminal);if(!processed.length)return{changed:false,removed:0,batches:0};
+  const processedAt=iso(),fingerprints=processedFingerprintSet(state);processed.forEach(t=>{if(t.fingerprint)fingerprints.add(t.fingerprint)});
+  state.processedBankFingerprints=[...fingerprints].slice(-FINGERPRINT_LIMIT);
+  const removedByBatch={};processed.forEach(t=>{removedByBatch[t.importBatchId]=(removedByBatch[t.importBatchId]||0)+1});
+  state.bankTransactions=(state.bankTransactions||[]).filter(t=>!terminal(t));
+  const historyIds=new Set((state.bankImportHistory||[]).map(h=>h.id));const kept=[];let movedBatches=0;
+  (state.bankImportBatches||[]).forEach(batch=>{
+    const pending=state.bankTransactions.filter(t=>t.importBatchId===batch.id).length,reviewed=removedByBatch[batch.id]||0;
+    if(pending===0&&reviewed>0){if(!historyIds.has(batch.id)){state.bankImportHistory.push(historyEntry(batch,reviewed,processedAt));historyIds.add(batch.id)}movedBatches++;}
+    else{batch.reviewStatus=pending?'needs_review':batch.reviewStatus;kept.push(batch)}
+  });
+  state.bankImportBatches=kept;
+  if(increment){state.revision=Number(state.revision||0)+1;state.lastUpdated=processedAt;state.lastUpdatedBy=updater(state)}
+  if(persist)localStorage.setItem(KEY,JSON.stringify(state));
+  return{changed:true,removed:processed.length,batches:movedBatches};
+}
 function humanDate(s){if(!s)return'';const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString()}
 function renderBatches(){
-  const box=$('#bankImportBatchList');if(!box)return;const state=stateNow(),batches=(state.bankImportBatches||[]).slice().sort((a,b)=>String(b.importedAt).localeCompare(String(a.importedAt)));
-  box.innerHTML=batches.map(b=>{const c=reviewCounts(state,b.id),sample=(state.bankTransactions||[]).filter(t=>t.importBatchId===b.id).slice(0,5);return`<details class="csv-item bank-batch"><summary><span class="tag ${c.pending?'conditional':'paid'}">${c.pending?'NEEDS REVIEW':'REVIEWED'}</span> <strong>${esc(b.source)} · ${esc(b.account)}</strong> <span class="small">${esc(b.fileName)} · ${b.newTransactions} new · ${b.duplicatesSkipped} duplicate${b.duplicatesSkipped===1?'':'s'} skipped</span></summary><div class="batch-body"><div class="small">Imported ${esc(humanDate(b.importedAt))} by ${esc(b.importedBy)} · ${esc(b.periodStart||'?')} to ${esc(b.periodEnd||'?')} · ${c.pending} pending / ${c.reviewed} reviewed</div><div class="batch-sample">${sample.map(t=>`<div><span>${esc(t.postedDate)}</span> <strong>${esc(t.description)}</strong> <span>${t.amount<0?'-':'+'}$${Math.abs(t.amount).toFixed(2)}</span></div>`).join('')}</div><div class="actions"><button class="btn danger remove-json-batch" data-id="${esc(b.id)}">Remove batch</button></div></div></details>`}).join('')||'<p class="small">No normalized bank batches are in the current JSON yet.</p>';
+  const box=$('#bankImportBatchList');if(!box)return;const state=stateNow(),batches=(state.bankImportBatches||[]).slice().sort((a,b)=>String(b.importedAt).localeCompare(String(a.importedAt))),history=(state.bankImportHistory||[]).slice().sort((a,b)=>String(b.reconciledAt||b.importedAt).localeCompare(String(a.reconciledAt||a.importedAt)));
+  const active=batches.map(b=>{const c=reviewCounts(state,b.id),sample=(state.bankTransactions||[]).filter(t=>t.importBatchId===b.id).slice(0,5);return`<details class="csv-item bank-batch"><summary><span class="tag conditional">NEEDS REVIEW</span> <strong>${esc(b.source)} · ${esc(b.account)}</strong> <span class="small">${esc(b.fileName)} · ${c.pending} row${c.pending===1?'':'s'} pending</span></summary><div class="batch-body"><div class="small">Imported ${esc(humanDate(b.importedAt))} by ${esc(b.importedBy)} · ${esc(b.periodStart||'?')} to ${esc(b.periodEnd||'?')} · ${c.pending} pending</div><div class="batch-sample">${sample.map(t=>`<div><span>${esc(t.postedDate)}</span> <strong>${esc(t.description)}</strong> <span>${t.amount<0?'-':'+'}$${Math.abs(t.amount).toFixed(2)}</span></div>`).join('')}</div><div class="actions"><button class="btn danger remove-json-batch" data-id="${esc(b.id)}">Remove batch</button></div></div></details>`}).join('');
+  const done=history.length?`<details class="csv-item bank-history"><summary><span class="tag paid">RECONCILED</span> <strong>Processed bank imports</strong> <span class="small">${history.length} batch${history.length===1?'':'es'} · ${state.processedBankFingerprints.length} duplicate fingerprints retained</span></summary><div class="batch-body">${history.map(h=>`<div class="small"><strong>${esc(h.source)} · ${esc(h.account)}</strong> — ${esc(h.fileName)} · ${esc(h.periodStart||'?')} to ${esc(h.periodEnd||'?')} · ${Number(h.reviewedTransactions||h.newTransactions||0)} reviewed · reconciled ${esc(humanDate(h.reconciledAt))}</div>`).join('')}</div></details>`:'';
+  box.innerHTML=active||'<p class="small">No bank transactions are waiting for review.</p>';box.insertAdjacentHTML('beforeend',done);
   box.querySelectorAll('.remove-json-batch').forEach(btn=>btn.onclick=e=>{e.preventDefault();removeBatch(btn.dataset.id)});
   const legacy=$('#legacyCsvNotice');if(legacy){const n=(state.bankCsvIntake||[]).length;legacy.textContent=n?`${n} legacy staged CSV metadata record${n===1?'':'s'} exist from the prior collection-only version. Re-import the original CSV files here to put transaction data into JSON.`:'';legacy.style.display=n?'block':'none'}
 }
 async function importFilesToJson(){
   const source=$('#bankCsvSource')?.value||'USAA',input=$('#bankCsvFile'),files=[...(input?.files||[])];if(!files.length)return alert('Choose at least one CSV file.');
-  const state=stateNow(),account=cleanText($('#bankCsvAccount')?.value)||sourceDefaults(source).account,existing=new Set((state.bankTransactions||[]).map(t=>t.fingerprint).filter(Boolean));let totalNew=0,totalDup=0,totalInvalid=0;const totalErrors=[];
+  const state=stateNow(),account=cleanText($('#bankCsvAccount')?.value)||sourceDefaults(source).account,existing=new Set([...(state.bankTransactions||[]).map(t=>t.fingerprint).filter(Boolean),...processedFingerprintSet(state)]);let totalNew=0,totalDup=0,totalInvalid=0;const totalErrors=[];
   for(const file of files){
     try{
       const parsed=parseCsv(await file.text()),occurrences={},normalized=[];let fileDup=0,fileInvalid=0;
@@ -105,17 +139,18 @@ async function importFilesToJson(){
       }
       totalDup+=fileDup;totalInvalid+=fileInvalid;
       if(!normalized.length){if(!fileDup)totalErrors.push(`${file.name}: no transaction rows could be normalized. Check the selected source.`);continue}
-      const batchId=uid('batch'),dates=normalized.map(t=>t.postedDate).filter(Boolean).sort(),batch={id:batchId,source,account,fileName:file.name,fileSize:file.size,importedAt:iso(),importedBy:updater(),rowCount:parsed.records.length,newTransactions:normalized.length,duplicatesSkipped:fileDup,invalidRowsSkipped:fileInvalid,periodStart:dates[0]||null,periodEnd:dates[dates.length-1]||null,reviewStatus:'needs_review',schema:'wfos-bank-transaction-v1'};
+      const batchId=uid('batch'),dates=normalized.map(t=>t.postedDate).filter(Boolean).sort(),batch={id:batchId,source,account,fileName:file.name,fileSize:file.size,importedAt:iso(),importedBy:updater(state),rowCount:parsed.records.length,newTransactions:normalized.length,duplicatesSkipped:fileDup,invalidRowsSkipped:fileInvalid,periodStart:dates[0]||null,periodEnd:dates[dates.length-1]||null,reviewStatus:'needs_review',schema:'wfos-bank-transaction-v1'};
       normalized.forEach(t=>state.bankTransactions.push({id:uid('banktx'),importBatchId:batchId,...t,reviewStatus:'needs_review',wfosCategory:null,subcategory:null,treatment:null,confidence:null,isTransfer:null,isBusiness:null,isRecurring:null,isDuplicate:null,duplicateOf:null,notes:'',reviewedBy:null,reviewedAt:null}));state.bankImportBatches.push(batch);totalNew+=normalized.length;
     }catch(e){totalErrors.push(`${file.name}: ${e.message}`)}
   }
-  if(totalNew){state.revision=Number(state.revision||0)+1;state.lastUpdated=iso();state.lastUpdatedBy=updater();localStorage.setItem(KEY,JSON.stringify(state))}if(input)input.value='';
-  const msg=[`Imported ${totalNew} new bank transactions into the private JSON.`,`${totalDup} previously imported rows were skipped as exact duplicates.`,totalInvalid?`${totalInvalid} rows could not be normalized and were skipped.`:'',totalErrors.length?`Problems: ${totalErrors.join(' | ')}`:'','Nothing was added to the Cash Plan or budgets. Imported transactions remain needs_review until ChatGPT reviews them.'].filter(Boolean).join('\n\n');alert(msg);if(totalNew)location.reload();else renderBatches();
+  if(totalNew){state.revision=Number(state.revision||0)+1;state.lastUpdated=iso();state.lastUpdatedBy=updater(state);localStorage.setItem(KEY,JSON.stringify(state))}if(input)input.value='';
+  const msg=[`Imported ${totalNew} new bank transactions into the private JSON.`,`${totalDup} previously imported rows were skipped as exact duplicates.`,totalInvalid?`${totalInvalid} rows could not be normalized and were skipped.`:'',totalErrors.length?`Problems: ${totalErrors.join(' | ')}`:'','Nothing was added to the Cash Plan or budgets. Imported transactions remain needs_review until ChatGPT reviews them. After reviewed JSON is re-imported, reviewed raw rows are compacted automatically.'].filter(Boolean).join('\n\n');alert(msg);if(totalNew)location.reload();else renderBatches();
 }
 function removeBatch(id){
-  if(!confirm('Remove this import batch and its normalized bank transactions from the JSON?'))return;const state=stateNow(),before=(state.bankTransactions||[]).length;state.bankTransactions=(state.bankTransactions||[]).filter(t=>t.importBatchId!==id);state.bankImportBatches=(state.bankImportBatches||[]).filter(b=>b.id!==id);state.revision=Number(state.revision||0)+1;state.lastUpdated=iso();state.lastUpdatedBy=updater();localStorage.setItem(KEY,JSON.stringify(state));alert(`Removed ${before-state.bankTransactions.length} normalized bank transactions.`);location.reload();
+  if(!confirm('Remove this unreviewed import batch and its normalized bank transactions from the JSON?'))return;const state=stateNow(),before=(state.bankTransactions||[]).length;state.bankTransactions=(state.bankTransactions||[]).filter(t=>t.importBatchId!==id);state.bankImportBatches=(state.bankImportBatches||[]).filter(b=>b.id!==id);state.revision=Number(state.revision||0)+1;state.lastUpdated=iso();state.lastUpdatedBy=updater(state);localStorage.setItem(KEY,JSON.stringify(state));alert(`Removed ${before-state.bankTransactions.length} unreviewed bank transactions.`);location.reload();
 }
 function prepareUi(){
+  const compacted=compactReviewedBankData(stateNow());if(compacted.changed){alert(`Bank review compacted: removed ${compacted.removed} reviewed raw transaction row${compacted.removed===1?'':'s'} from the operational JSON. Import history and duplicate fingerprints were retained.`);location.reload();return}
   const oldStage=$('#stageBankCsvBtn');if(oldStage){const fresh=oldStage.cloneNode(true);fresh.textContent='Import CSV into JSON';oldStage.replaceWith(fresh);fresh.onclick=importFilesToJson}
   const oldShare=$('#shareAllCsvBtn');if(oldShare)oldShare.remove();
   const source=$('#bankCsvSource'),account=$('#bankCsvAccount');if(source&&account){source.onchange=()=>{account.value=sourceDefaults(source.value).account}}
