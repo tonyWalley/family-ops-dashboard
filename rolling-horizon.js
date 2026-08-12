@@ -32,9 +32,10 @@ function monthKey(ds){return String(ds||'').slice(0,7)}
 function monthStart(key){return new Date(key+'-01T12:00:00')}
 function nextMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,1,12,0,0)}
 function horizonEnd(state){
-  const asOf=currentAsOf(state),dates=[state?.period?.end].filter(Boolean);
+  const asOf=currentAsOf(state),dates=[asOf],periodEnd=state?.period?.end;
+  if(periodEnd&&periodEnd>=asOf)dates.push(periodEnd);
   (state.transactions||[]).forEach(t=>{const d=txDate(t);if(d&&d>=asOf)dates.push(d)});
-  return dates.sort().slice(-1)[0]||asOf;
+  return dates.sort().slice(-1)[0];
 }
 function runningCash(state){
   const mode=state?.settings?.forecastMode||'base',asOf=currentAsOf(state);let bal=currentCash(state);const cash={};
@@ -54,9 +55,9 @@ function monthBlock(state,key,cash){
   let grid=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="calhead">${x}</div>`).join('');
   for(let i=0;i<cells;i++){
     const d=new Date(y,m,1-offset+i,12,0,0),ds=d.toISOString().slice(0,10),outside=d.getMonth()!==m;
-    const items=(state.transactions||[]).filter(t=>t?.id!=='open'&&txDate(t)===ds);
+    const items=outside?[]:(state.transactions||[]).filter(t=>t?.id!=='open'&&txDate(t)===ds);
     let events=items.map(eventHtml).join('');
-    if(cash[ds]!==undefined)events+=`<div class="event cash">After day: ${money(cash[ds])} available</div>`;
+    if(!outside&&cash[ds]!==undefined)events+=`<div class="event cash">After day: ${money(cash[ds])} available</div>`;
     grid+=`<div class="calday ${outside?'outside':''}"><div class="daynum">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>${events}</div>`;
   }
   return`<section class="horizon-month"><h3>${esc(title)}</h3><div class="horizon-month-grid">${grid}</div></section>`;
@@ -82,8 +83,8 @@ function jumpToCashPlan(id){
   setTimeout(()=>document.querySelector(`[data-row="${CSS.escape(id)}"],[data-card="${CSS.escape(id)}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}),60);
 }
 function patchOverview(state){
-  const labels=[...document.querySelectorAll('#kpis .label')];const endLabel=labels.find(x=>x.textContent.trim()==='End-of-period cash');if(endLabel)endLabel.textContent='End-of-horizon cash';
-  const endCard=endLabel?.closest('.card');const end=horizonEnd(state);if(endCard){const small=endCard.querySelector('.small');if(small)small.textContent=`Through ${new Date(end+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} before unmodeled items`;}
+  const labels=[...document.querySelectorAll('#kpis .label')];const endLabel=labels.find(x=>['End-of-period cash','End-of-horizon cash'].includes(x.textContent.trim()));if(endLabel)endLabel.textContent='End-of-horizon cash';
+  const endCard=endLabel?.closest('.card'),end=horizonEnd(state);if(endCard){const small=endCard.querySelector('.small');if(small)small.textContent=`Through ${new Date(end+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} before unmodeled items`;}
   renderNextSeven(state);
 }
 function renderNextSeven(state){
