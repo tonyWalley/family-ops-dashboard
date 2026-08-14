@@ -12,6 +12,7 @@
 <title>Family Ops Dashboard</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="bank-ingest.css">
+<link rel="stylesheet" href="goals-subscriptions.css">
 </head>
 <body>
 <div class="app">
@@ -25,6 +26,8 @@
     <button class="tab" data-tab="calendar">Calendar</button>
     <button class="tab" data-tab="cashplan">Cash Plan</button>
     <button class="tab" data-tab="budgets">Budgets</button>
+    <button class="tab" data-tab="goals">Goals</button>
+    <button class="tab" data-tab="subscriptions">Subscriptions</button>
     <button class="tab" id="owner1Tab" data-tab="owner1tasks">Tony</button>
     <button class="tab" id="owner2Tab" data-tab="owner2tasks">Rachel</button>
     <button class="tab" data-tab="updates">Updates</button>
@@ -80,6 +83,23 @@
   <div class="callout good"><strong>Restaurant rule:</strong> controlled use, not elimination. Convenience meals that protect the family schedule are allowed inside the cap.</div>
 </section>
 
+<section class="section" id="goals">
+  <div class="panel">
+    <div class="ops-intro"><div><h2>Goals</h2><p class="small" id="goalCount">No goals loaded</p></div><button class="btn primary" id="addGoalBtn">Add goal</button></div>
+    <div class="callout good"><strong>Big-picture check:</strong> goals live in the imported private JSON. The public app shell contains no family goal data. Use this tab to keep long-term priorities visible between cash-plan revisions.</div>
+    <div id="goalsList"></div>
+  </div>
+</section>
+
+<section class="section" id="subscriptions">
+  <div class="panel">
+    <div class="ops-intro"><div><h2>Subscriptions</h2><p class="small">Recurring services grouped by category, with active-risk totals and annual-conversion planning.</p></div><button class="btn primary" id="addSubscriptionBtn">Add subscription</button></div>
+    <div class="grid4" id="subscriptionKpis"></div>
+    <div class="callout"><strong>Total rule:</strong> Active and Cancel Pending items count in current recurring risk. Needs Confirmation and Planned items stay visible but are excluded until confirmed/activated.</div>
+    <div id="subscriptionGroups"></div>
+  </div>
+</section>
+
 <section class="section" id="owner1tasks">
   <div class="panel task-panel">
     <div class="cashplan-heading"><div><h2 id="owner1Title">Tony's To-Do List</h2><p class="small" id="owner1ProgressText"></p></div><button class="btn primary" id="addOwner1TaskBtn">Add task</button></div>
@@ -131,10 +151,11 @@
 <div class="footer">Family operations dashboard. Data-pipeline stabilized; prioritize financial execution over further app development.</div>
 </div>
 <div class="modal hidden" id="summaryModal"><div class="modalbox"><div class="modalhead"><h2>Formatted Family Summary</h2><button class="close" id="closeSummary">x</button></div><div class="actions"><button class="btn good" id="copyRichBtn">Copy rich text</button><button class="btn" id="copyPlainBtn">Copy plain text</button></div><div class="summarybox" id="summaryContent" contenteditable="true"></div></div></div>
-<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.7.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-09T00:03:00-05:00","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base","currentCashBreakdown":{"usaaAvailable":0,"chaseArrtAvailable":0,"physicalCash":0,"paypalCash":0,"otherAvailable":0,"total":0,"asOf":"2026-08-09","updatedAt":"2026-08-09T00:03:00-05:00"}},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; rolling forecasts use current accessible cash."}],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-09T00:03:00-05:00","author":"System","text":"Public app shell contains no household financial data. Import private WFOS_CURRENT_STATE.json to begin."}],"bankCsvIntake":[],"bankImportBatches":[],"bankTransactions":[],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
+<script id="embedded-state" type="application/json">{"schemaVersion":1,"dashboardVersion":"1.8.0","title":"Family Ops Dashboard","period":{"start":"2026-08-01","end":"2026-08-31"},"revision":0,"lastUpdated":"2026-08-09T00:03:00-05:00","lastUpdatedBy":"Not set","settings":{"openingBalance":0,"currentAccessibleCash":0,"cashFloor":0,"showCompleted":true,"forecastMode":"base","currentCashBreakdown":{"usaaAvailable":0,"chaseArrtAvailable":0,"physicalCash":0,"paypalCash":0,"otherAvailable":0,"total":0,"asOf":"2026-08-09","updatedAt":"2026-08-09T00:03:00-05:00"}},"budgets":[],"transactions":[{"id":"open","date":"2026-08-01","name":"Historical opening balance","owner":"Owner 1","category":"Opening Balance","kind":"income","amount":0,"actualAmount":0,"cashStatus":"available","paymentStatus":"paid","includeBase":true,"includeDownside":true,"includeRecovery":true,"autopay":false,"notes":"Legacy historical row; rolling forecasts use current accessible cash."}],"goals":[],"subscriptions":[],"unknowns":[],"tasks":[],"notes":[{"id":"welcome","time":"2026-08-09T00:03:00-05:00","author":"System","text":"Public app shell contains no household financial data. Import private WFOS_CURRENT_STATE.json to begin."}],"bankCsvIntake":[],"bankImportBatches":[],"bankTransactions":[],"ownerNames":{"primary":"Owner 1","secondary":"Owner 2"}}</script>
 <script src="app.js" defer></script>
 <script src="bank-ingest.js" defer></script>
 <script src="rolling-horizon.js" defer></script>
+<script src="goals-subscriptions.js" defer></script>
 <script>if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
 </body>
 </html>
